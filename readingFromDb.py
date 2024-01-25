@@ -79,4 +79,21 @@ def write_data(solution, solutionDate):
     except pyodbc.Error as ex:
         print("Error:", ex)
 
-# write_data([1,2,3,4,5,6,7,1,2,3,4,5,6,7,1,2,3,4,5,6,7], '20240107')
+def getChargingTime(bus, ampereLevel, start, end):
+    cnxn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password, autocommit=True)
+    cursor = cnxn.cursor()
+    query = f"select dbo.calcBI('Electric Bus Charge','14:1F:BA:10:7D:61,{ampereLevel}',cast('<soc>{end}</soc>' as xml)).value('/result[1]/scaled[1]','float')-dbo.calcBI('Electric Bus Charge','14:1F:BA:10:7D:61,{ampereLevel}',cast('<soc>{start}</soc>' as xml)).value('/result[1]/scaled[1]','float')"
+    cursor.execute(query)
+    result = cursor.fetchone()
+    i = ampereLevel+1 if ampereLevel==1 else ampereLevel-1
+    while result[0]==None and i>1 and i<5:
+        i = i+1 if ampereLevel == 1 else i-1
+        query = f"select dbo.calcBI('Electric Bus Charge','14:1F:BA:10:7D:61,{i}',cast('<soc>{end}</soc>' as xml)).value('/result[1]/scaled[1]','float')-dbo.calcBI('Electric Bus Charge','14:1F:BA:10:7D:61,{i}',cast('<soc>{start}</soc>' as xml)).value('/result[1]/scaled[1]','float')"
+        cursor.execute(query)
+        result = cursor.fetchone()
+    cursor.close()
+    cnxn.close()
+    if result[0]==None:
+        print(f"No resulte for bus {bus}")
+        return 10
+    return int(result[0]*60*1000)

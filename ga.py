@@ -4,6 +4,7 @@ import convertions
 import initializations
 import random
 import initialPopulation
+import min_max_price
 
 def run(problem, params):
     # Problem Information
@@ -28,15 +29,7 @@ def run(problem, params):
 
     init_pop = convertions.initial_population()
 
-    max_cost = 0
-    min_cost = np.inf
-
-    for solution in init_pop:
-        curr_price = initialPopulation.calculate_solution_price(solution)
-        if curr_price > max_cost:
-            max_cost = curr_price
-        if curr_price < min_cost:
-            min_cost = curr_price
+    min_cost, max_cost = min_max_price.min_max_price()
     
     # Initialize Population
     pop = empty_individual.repeat(npop)
@@ -251,7 +244,7 @@ def add_or_remove_schedule(offspring):
                             if prev_slot_end_bus <= slot_end_charger: # if I can extend the charging to start early
                                 start = prev_slot_start_bus if prev_slot_start_bus >= slot_start_charger else slot_start_charger
                                 if (prev_slot_end_bus - start) > big_slot_time.time:
-                                    print("biggest slot time")
+                                    # print("biggest slot time")
                                     big_slot_time.start = start
                                     big_slot_time.end = prev_slot_end_bus
                                     big_slot_time.time = big_slot_time.end - big_slot_time.start
@@ -268,7 +261,7 @@ def add_or_remove_schedule(offspring):
                             if next_slot_start_bus >= slot_start_charger: # if I can extend the charging to end later
                                 end = next_slot_end_bus if next_slot_end_bus <= slot_start_charger else slot_end_charger
                                 if (end - next_slot_start_bus) > big_slot_time.time:
-                                    print("biggest slot time")
+                                    # print("biggest slot time")
                                     big_slot_time.start = next_slot_start_bus
                                     big_slot_time.end = end
                                     big_slot_time.time = big_slot_time.end - big_slot_time.start
@@ -284,9 +277,13 @@ def add_or_remove_schedule(offspring):
                         max_ampere_level = k+1
                         break
                 for a in range(0,5-max_ampere_level):
-                    curr_soc = big_slot_time.time/1000/60*amperLevels[5-a]*chargers[curr_bus_busy[big_slot_time.bus_schedule_index]['charger']]["voltage"] / 1000 / capacity[int(bus)]
+                    # print(max_ampere_level, a)
+                    ampereLevel = amperLevels[4-a]
+                    ampere = ampereLevel["low"]+(ampereLevel["high"]-ampereLevel["low"])/2
+                    curr_soc = big_slot_time.time/1000/60*ampere*chargers[curr_bus_busy[big_slot_time.bus_schedule_index]['charger']]["voltage"] / 1000 / capacity[int(bus)]
+                    # print(f"curr_soc: {curr_soc}, needed_soc: {needed_soc}")
                     if curr_soc >= needed_soc:
-                        ampereLevel = amperLevels[5-a]
+                        ampereLevel = amperLevels[4-a]
                         ampere = ampereLevel["low"]+(ampereLevel["high"]-ampereLevel["low"])/2
                         if ampere == curr_bus_busy[big_slot_time.bus_schedule_index]['ampere']:
                             price = 0
@@ -302,12 +299,15 @@ def add_or_remove_schedule(offspring):
                                     else:
                                         offspring[n+3] = int(big_slot_time.start)
                                     offspring[n+6] = price
+                                    # print("consecutive")
                                     return offspring
                         else:
                             price = initialPopulation.calculate_schedule_price(ampere, int(big_slot_time.start), int(big_slot_time.end), data["prices"],chargers[curr_bus_busy[i]['charger']]["voltage"])
                             offspring.extend([chargerCode, connectorId, bus, int(big_slot_time.start), int(big_slot_time.end), ampere, price])
+                            # print("consecutive")
                             return offspring
             # founding the biggest slot of time
+            # print("not consecutive")
             prev_empty_time = structure()
             prev_empty_time.start = busses_charge[bus]["entryTime"]
             prev_empty_time.end = busses_charge[bus]["entryTime"]
