@@ -1,5 +1,6 @@
 import initializations
 import random
+import readingFromDb
 
 inputs = initializations.getFunctionInputsDB()
 busses = inputs["busses"]
@@ -17,37 +18,48 @@ def init_pop(npop):
         chargers_keys = list(chargers.keys())
         random.shuffle(chargers_keys)
         shuffled_chargers = {key: chargers[key] for key in chargers_keys} # random shuffled chargers
-        finish = False
         sol = [] # solution
-        chargers_busy = {key: {'busy': False, 'schedules': []} for key in chargers_keys} # list of charging for each cherger
+        chargers_busy = {key: [] for key in chargers_keys} # list of charging for each cherger
         for bus in shuffled_busses: # run on each bus for fining free charger
-            for charger in shuffled_chargers: # run to fining free charger to the bus
-                charger_key = chargers_keys[charger]
-
-            sol.append({"chargerCode": charger_code, "connectorId": connector_id, "trackCode": j, "startTime": startTime, "endTime": endTime, "ampere": ampere, "price": price})
+            found_charger = False
+            while found_charger==False:
+                for charger in shuffled_chargers: # run to fining free charger to the bus
+                    chargerAmpere = chargers[charger]["ampere"] # random ampere that suitable for the charger
+                    # print("finding ampere and time start")
+                    ampere, ampereLevel = rand_ampere(chargerAmpere)
+                    # print("charging time start")
+                    time = charging_time(ampereLevel, bus)
+                    # print("charging time end")
+                    while busses[bus]['exitTime']-busses[bus]['entryTime'] < time:
+                        ampere = faster(ampere, chargerAmpere)
+                        if ampere == False:
+                            break
+                        # print("charging time start")
+                        time = charging_time(ampere, bus)
+                        # print("charging time end")
+                    if ampere == False:
+                        break
+                    # print("finding ampere and time end")
+                    interval = random.randint(10, 20)*60000
+                    if len(chargers_busy[charger]) == 0:
+                        start_time = busses[bus]['entryTime']
+                        end_time = busses[bus]['entryTime']+time
+                        print("First schedule added for the solution...")
+                        sol.append(append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger))
+                        found_charger = True
+                        break
+                    elif len(chargers_busy[charger])>0:
+                        chargers_busy[charger] = sorted(chargers_busy[charger], key=lambda x: x['start_time'])
+                        start = chargers_busy[charger][0]['start_time']
+                        for i in range(1,len(chargers_busy[charger])):
+                            end = chargers_busy[charger][i]['end_time']
+                            if time <= (end-interval)-(start+interval) and busses[bus]['entryTime'] <= start+interval and start+interval+time <= busses[bus]['exitTime']:
+                                start_time = start+interval
+                                end_time = start+interval+time
+                                print("Schedule adde for the solution...")
+                                sol.append(append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger))
+                                break
         pop.append(sol)
-        # for j in busses.keys(): # for each bus
-        #     if(busses[j]["entryTime"] >0 and busses[j]["exitTime"]>0):
-        #         keys_list = list(chargers.keys())
-        #         charger_ = random.choice(keys_list)
-        #         charger_code = charger_[0]
-        #         connector_id =charger_[1]
-        #         bus = busses[j]
-        #         mid_time = bus["entryTime"]+(bus["exitTime"]-bus["entryTime"])/2
-        #         startTime = random.randint(bus["entryTime"], mid_time)
-        #         endTime = random.randint(mid_time+1, bus["exitTime"])
-        #         if startTime > endTime:
-        #             print("initial population - end time > start time")
-        #         chargerAmpere = chargers[charger_]["ampere"]
-        #         max_ampere_level = 1
-        #         for i in range(0, 5):
-        #             if amperLevels[i]["low"] <= chargerAmpere and chargerAmpere <= amperLevels[i]["high"]:
-        #                 max_ampere_level = i+1
-        #                 break
-        #         amperLevel = random.randint(max_ampere_level, 5)
-        #         ampere = amperLevels[amperLevel-1]["low"]+(amperLevels[amperLevel-1]["high"]-amperLevels[amperLevel-1]["low"])/2
-        #         price = calculate_schedule_price(ampere, startTime, endTime, prices, chargers[charger_]["voltage"])
-
     return pop
 
 def calculate_schedule_price(ampere, startTime, endTime, prices, voltage):
@@ -74,4 +86,32 @@ def calculate_solution_price(solution):
         final_price += price
     return final_price
 
-init_pop(1)
+def rand_ampere(chargerAmpere):
+    max_ampere_level = 1 # the lowest level
+    for i in range(0, 5):
+        if amperLevels[i]["low"] <= chargerAmpere and chargerAmpere <= amperLevels[i]["high"]:
+            max_ampere_level = i+1
+            break
+    ampereLevel = amperLevels[random.randint(max_ampere_level, 5)-1]
+    ampere = ampereLevel["low"]+(ampereLevel["high"]-ampereLevel["low"])/2
+    return ampere, ampereLevel['levelCode']
+
+def charging_time(ampereLevel, bus):
+    return readingFromDb.getChargingTime(bus, ampereLevel, busses[bus]["socStart"], busses[bus]["socEnd"])
+
+def faster(ampere, chargerAmpere):
+    new_ampere = -1
+    for i in amperLevels:
+        if amperLevels[i]["low"] <= ampere and ampere <= amperLevels[i]["high"]:
+            if i == 0:
+                return False 
+            new_ampere = amperLevels[i-1]["low"]+(amperLevels[i-1]["high"]-amperLevels[i-1]["low"])/2
+    return new_ampere if new_ampere < chargerAmpere else chargerAmpere
+
+def append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger):
+    chargers_busy[charger].append({'start_time':start_time , 'end_time': end_time})
+    price = calculate_schedule_price(ampere, start_time, end_time, prices, chargers[charger]["voltage"])
+    return {"chargerCode": charger[0], "connectorId": charger[1], "trackCode": bus, "startTime": start_time, "endTime":end_time, "ampere": ampere, "price": price}
+
+pop = init_pop(1)
+print(pop)
