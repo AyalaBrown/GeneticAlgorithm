@@ -1,5 +1,6 @@
-
-sol = [{'chargerCode': 9, 'connectorId': 2, 'trackCode': 334, 'startTime': 1704646020000.0, 'endTime': 1704647977951.0, 'ampere': 121.0, 'price': 49.098051927250076}, 
+import convertions
+def return_sol():
+    sol = [[{'chargerCode': 9, 'connectorId': 2, 'trackCode': 334, 'startTime': 1704646020000.0, 'endTime': 1704647977951.0, 'ampere': 121.0, 'price': 49.098051927250076}, 
         {'chargerCode': 122, 'connectorId': 1, 'trackCode': 8768, 'startTime': 1704651720000.0, 'endTime': 1704653960564.0, 'ampere': 80.0, 'price': 37.14705701562145}, 
         {'chargerCode': 115, 'connectorId': 2, 'trackCode': 8140, 'startTime': 1704654960000.0, 'endTime': 1704655333075.0, 'ampere': 80.0, 'price': 6.1853347181102905}, 
         {'chargerCode': 78, 'connectorId': 2, 'trackCode': 7702, 'startTime': 1704654780000.0, 'endTime': 1704657628003.0, 'ampere': 80.0, 'price': 63.94920458382869}, 
@@ -139,5 +140,6 @@ sol = [{'chargerCode': 9, 'connectorId': 2, 'trackCode': 334, 'startTime': 17046
         {'chargerCode': 110, 'connectorId': 2, 'trackCode': 8793, 'startTime': 1704649620000.0, 'endTime': 1704650035728.0, 'ampere': 80.0, 'price': 6.8924930134176625}, 
         {'chargerCode': 57, 'connectorId': 2, 'trackCode': 7964, 'startTime': 1704664320000.0, 'endTime': 1704665220714.0, 'ampere': 100.5, 'price': 10.475087665237007}, 
         {'chargerCode': 127, 'connectorId': 1, 'trackCode': 8651, 'startTime': 1704651720000.0, 'endTime': 1704652046590.0, 'ampere': 121.0, 'price': 8.189649678814733}, 
-        {'chargerCode': 124, 'connectorId': 2, 'trackCode': 8012, 'startTime': 1704645600000.0, 'endTime': 1704645604996.0, 'ampere': 121.0, 'price': 0.12528090372269063}]
-print(len(sol))
+        {'chargerCode': 124, 'connectorId': 2, 'trackCode': 8012, 'startTime': 1704645600000.0, 'endTime': 1704645604996.0, 'ampere': 121.0, 'price': 0.12528090372269063}]]
+    conv = convertions.convert_population_to_numeric(sol)
+    return conv[0]

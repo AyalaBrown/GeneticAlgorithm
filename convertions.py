@@ -9,7 +9,7 @@ def convert_population_to_numeric(population):
         numeric_population.append(numeric_schedule)
     return numeric_population
 
-def initial_population():   
-    bus_schedule = initialPopulation.init_pop(10)
+def initial_population(npop):   
+    bus_schedule = initialPopulation.init_pop(npop)
     numeric_representation = convert_population_to_numeric(bus_schedule)
     return numeric_representation
