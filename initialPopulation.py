@@ -1,6 +1,8 @@
 import initializations
 import random
 import readingFromDb
+import logging
+import time
 
 inputs = initializations.getFunctionInputsDB()
 busses = inputs["busses"]
@@ -9,6 +11,8 @@ chargers = inputs["chargers"]
 maxPower = inputs["maxPower"]
 amperLevels = inputs["amperLevels"]
 
+logging.basicConfig(filename='init_pop.log', level=logging.INFO, format='%(asctime)s - %(message)s')
+
 def init_pop(npop):
     busses_keys = list(busses.keys())
     chargers_keys = list(chargers.keys())
@@ -16,39 +20,27 @@ def init_pop(npop):
     for i in range(npop):
         random.shuffle(busses_keys)
         random.shuffle(chargers_keys)
-        # print(chargers_keys)
         sol = [] # solution
         chargers_busy = {key: [] for key in chargers_keys} # list of charging for each cherger
         charger_ind = 0
-        # print(chargers_keys)
-        # print(busses_keys)
         for bus in busses_keys: # run on each bus for fining free charger
-            # print(bus)
             found_charger = False
             while found_charger==False:
-                # print(charger_ind)
                 charger = chargers_keys[charger_ind]
                 chargerAmpere = chargers[charger]["ampere"] # random ampere that suitable for the charger
-                # print("finding ampere and time start")
                 ampere, ampereLevel = rand_ampere(chargerAmpere)
-                # print("charging time start")
-                time = charging_time(ampereLevel, bus)
-                # print("charging time end")
-                while busses[bus]['exitTime']-busses[bus]['entryTime'] < time:
+                t = charging_time(ampereLevel, bus)
+                while busses[bus]['exitTime']-busses[bus]['entryTime'] < t:
                     ampere = faster(ampere, chargerAmpere)
                     if ampere == False:
                         break
-                    # print("charging time start")
-                    time = charging_time(ampere, bus)
-                    # print("charging time end")
+                    t = charging_time(ampere, bus)
                 if ampere == False:
                     break
-                # print("finding ampere and time end")
                 interval = random.randint(10, 20)*60000
                 if len(chargers_busy[charger]) == 0:
                     start_time = busses[bus]['entryTime']
-                    end_time = busses[bus]['entryTime']+time
-                    # print("First schedule added for the solution...")
+                    end_time = busses[bus]['entryTime']+t
                     sol.append(append_schedule(chargers_busy, int(start_time), int(end_time), ampere, bus, charger))
                     found_charger = True
                 elif len(chargers_busy[charger])>0:
@@ -56,10 +48,9 @@ def init_pop(npop):
                     start = chargers_busy[charger][0]['start_time']
                     for i in range(1,len(chargers_busy[charger])):
                         end = chargers_busy[charger][i]['end_time']
-                        if time <= (end-interval)-(start+interval) and busses[bus]['entryTime'] <= start+interval and start+interval+time <= busses[bus]['exitTime']:
+                        if t <= (end-interval)-(start+interval) and busses[bus]['entryTime'] <= start+interval and start+interval+t <= busses[bus]['exitTime']:
                             start_time = start+interval
-                            end_time = start+interval+time
-                            # print("Schedule adde for the solution...")
+                            end_time = start+interval+t
                             sol.append(append_schedule(chargers_busy, int(start_time), int(end_time), ampere, bus, charger))
                             found_charger = True
                             break
@@ -67,25 +58,29 @@ def init_pop(npop):
                     charger_ind = 0
                 else:
                     charger_ind+=1
+                logging.info(f"Processed bus {bus} and charger {charger} at {time.time()}")
         pop.append(sol)
         print(f"Added solution {i}")
+        logging.info(f"Added solution {i}")
     return pop
 
 def calculate_schedule_price(ampere, startTime, endTime, prices, voltage):
-    sorted_prices = sorted(prices, key=lambda x: x["from"])
+    if endTime<startTime:
+        print("end smaller then start")
+    sorted_prices = sorted(prices, key=lambda x: x['from'])
     price = 0
     for k in range(0, len(prices)):
         if endTime == None:
             print(ampere, startTime, endTime, prices, voltage)
-        if (startTime >= sorted_prices[k]["from"] and startTime<prices[k]["to"]) or price > 0:
-            if endTime <= sorted_prices[k]["to"]:
-                price += sorted_prices[k]["finalPriceInAgorot"]/100 * ampere * (endTime/1000./60./60. - startTime/1000./60./60.) * voltage/1000
+        if (startTime >= sorted_prices[k]['from'] and startTime<prices[k]['to']) or price > 0:
+            if endTime <= sorted_prices[k]['to']:
+                price += sorted_prices[k]['finalPriceInAgorot'] * ampere * (endTime - startTime)/1000./60./60. * voltage/1000
                 return price
             else:
                 if price == 0:
-                    price = sorted_prices[k]["finalPriceInAgorot"]/100 * ampere * (sorted_prices[k]["to"]/1000./60./60. - startTime/1000./60./60.) * voltage/1000
+                    price = ampere * voltage/1000 * sorted_prices[k]['finalPriceInAgorot'] * (sorted_prices[k]['to'] - startTime)/1000./60./60.
                 else:
-                    price += sorted_prices[k]["finalPriceInAgorot"]/100 * ampere * (sorted_prices[k]["to"]/1000./60./60. - sorted_prices[k]["from"]/1000./60./60.) *voltage/1000
+                    price += sorted_prices[k]['finalPriceInAgorot'] * ampere * (sorted_prices[k]['to'] - sorted_prices[k]['from'])/1000./60./60. * voltage/1000
     return price
 
 def calculate_solution_price(solution):

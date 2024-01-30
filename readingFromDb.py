@@ -1,7 +1,6 @@
 import pyodbc
 import pandas as pd
 import json
-import DateTime
 
 
 server = '192.168.16.3'
