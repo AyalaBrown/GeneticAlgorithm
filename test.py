@@ -1,4 +1,6 @@
 import convertions
+import random
+
 def return_sol():
     sol = [[{'chargerCode': 9, 'connectorId': 2, 'trackCode': 334, 'startTime': 1704646020000.0, 'endTime': 1704647977951.0, 'ampere': 121.0, 'price': 49.098051927250076}, 
         {'chargerCode': 122, 'connectorId': 1, 'trackCode': 8768, 'startTime': 1704651720000.0, 'endTime': 1704653960564.0, 'ampere': 80.0, 'price': 37.14705701562145}, 
@@ -143,3 +145,16 @@ def return_sol():
         {'chargerCode': 124, 'connectorId': 2, 'trackCode': 8012, 'startTime': 1704645600000.0, 'endTime': 1704645604996.0, 'ampere': 121.0, 'price': 0.12528090372269063}]]
     conv = convertions.convert_population_to_numeric(sol)
     return conv[0]
+
+def test(parent1):
+    charger_index = random.randrange(0, len(parent1), 7)
+    print(charger_index)
+
+# test([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
+x = {}
+if 5 not in x.keys():
+    x[5]=[1]
+x[5].append(1)
+
+    
+print(x)

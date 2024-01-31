@@ -108,22 +108,82 @@ def run(problem, params):
     return out
 
 def crossover(p1, p2):
-    c1 = p1.deepcopy()
-    c2 = p2.deepcopy()
-    length = min(len(p1.position), len(p2.position))
-    num_of_solutions = length/7
-    crossSite1 = np.random.randint(0, num_of_solutions/2)*7
-    crossSite2 = np.random.randint(num_of_solutions/2, num_of_solutions)*7
 
-    for i in range(0, length):
-        if i >=crossSite1 and i <= crossSite2:
-            c1.position[i] = p2.position[i]
-            c2.position[i] = p1.position[i]
+    data = initializations.getFunctionInputsDB()
+    chargers  =  data['chargers']
+    buses = data['busses']
+
+    # Randomly select a charger index
+    charger_index = random.randrange(0, len(p1), 7)
+
+    chargers_busy = {}
+    buses_busy = []
+
+    offspring = p1[:charger_index+7]
+
+    # Running on the offspring and keeping the buses in it and the schedules
+    for i in range(0 + len(offspring), 7):
+        schedule = offspring[i:i+7]
+        buses_busy.append(schedule[2])
+        if (schedule[0], schedule[1]) in chargers_busy.keys():
+            chargers_busy[(schedule[0], schedule[1])].append({'from':schedule[3], 'to':schedule[4]})
         else:
-            c1.position[i] = p1.position[i]
-            c2.position[i] = p2.position[i]
-    
-    return c1, c2
+            chargers_busy[(schedule[0], schedule[1])] = [{'from':schedule[3], 'to':schedule[4]}]
+
+    # Running on P2
+    for i in range(0 + len(p2), 7):
+        schedule = p1[i:i+7]
+
+        # If the bus alredy exists in the buses_busy, continue to the next 
+        if schedule[2] in buses_busy:
+            continue
+        
+        buses_busy.append(schedule[2])
+
+        # If the schedule's charger not exists in the chargers_busy - adding the schedule to the offspring
+        if (schedule[0], schedule[1]) not in chargers_busy.keys():
+            chargers_busy[(schedule[0], schedule[1])] = [{'from': schedule[3], 'to': schedule[4]}]
+            offspring.append(schedule)
+            continue
+
+        # The charger is alredy in the list - 
+        # cheking if this charging and the existing chargings are overlap in time
+        # If not - adding the charging to the charger.
+        chargers_busy[(schedule[0], schedule[1])].sort(key = lambda x: x['start'])
+        found = False
+        start = 0
+        for j in chargers_busy[(schedule[0], schedule[1])]:
+            end = j['start']
+            if schedule[3] >= start and schedule[4] <= end:
+                chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
+                offspring.append(schedule)
+                found = True
+                break
+        if found == True:
+            continue
+
+        # else - cheking for another charger
+        for charger in chargers.keys():
+            
+            # if the charger dosen't exists in charers_busy - adding the charging to the charger...
+            if charger not in chargers_busy.keys():
+
+                # if the ampere of the schedule possibile in this charger - adding the schedule to this charger
+                if schedule[6]<= chargers[charger]['ampere']:
+                    chargers_busy[charger] = ({'from': schedule[3], 'to': schedule[4]})
+                    schedule[0] = charger[0]
+                    schedule[1] = charger[1]
+                    offspring.append(schedule)
+                    found = True
+                    break
+                # else - rand another ampere
+                else:
+                    ampere, ampereLevel = initialPopulation.rand_ampere(chargers[charger]['ampere'])
+                    time = initialPopulation.charging_time(ampereLevel, schedule[2])
+                    
+
+
+    return offspring
 
 def mutate(x):
     offspring = x.deepcopy()
