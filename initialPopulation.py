@@ -31,7 +31,7 @@ def init_pop(npop):
                 ampere, ampereLevel = rand_ampere(chargerAmpere)
                 t = charging_time(ampereLevel, bus)
                 while busses[bus]['exitTime']-busses[bus]['entryTime'] < t:
-                    ampere = faster(ampere, chargerAmpere)
+                    ampere = faster(ampereLevel, chargerAmpere)
                     if ampere == False:
                         break
                     t = charging_time(ampere, bus)
@@ -103,14 +103,11 @@ def rand_ampere(chargerAmpere):
 def charging_time(ampereLevel, bus):
     return readingFromDb.getChargingTime(bus, ampereLevel, busses[bus]["socStart"], busses[bus]["socEnd"])
 
-def faster(ampere, chargerAmpere):
-    new_ampere = -1
-    for i in amperLevels:
-        if amperLevels[i]["low"] <= ampere and ampere <= amperLevels[i]["high"]:
-            if i == 0:
-                return False 
-            new_ampere = amperLevels[i-1]["low"]+(amperLevels[i-1]["high"]-amperLevels[i-1]["low"])/2
-    return new_ampere if new_ampere < chargerAmpere else chargerAmpere
+def faster(ampereLevel, chargerAmpere):
+    if ampereLevel == 1:
+        return False, False 
+    new_ampere = amperLevels[ampereLevel-1]["low"]+(amperLevels[ampereLevel-1]["high"]-amperLevels[ampereLevel-1]["low"])/2
+    return new_ampere, ampereLevel-1 if new_ampere < chargerAmpere else chargerAmpere, ampereLevel
 
 def append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger):
     chargers_busy[charger].append({'start_time':start_time , 'end_time': end_time})

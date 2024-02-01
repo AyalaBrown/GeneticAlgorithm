@@ -151,10 +151,3 @@ def test(parent1):
     print(charger_index)
 
 # test([0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])
-x = {}
-if 5 not in x.keys():
-    x[5]=[1]
-x[5].append(1)
-
-    
-print(x)
