@@ -108,6 +108,7 @@ def crossover(p1, p2):
     charger_index = random.randrange(0, len(p1.position), 7)
 
     chargers_busy = {}
+    schedulesForFitting = []
     buses_busy = []
 
     # print(charger_index+7)
@@ -134,8 +135,8 @@ def crossover(p1, p2):
 
     # Running on P2
     for i in range(0, len(p2.position), 7):
-        schedule = p1.position[i:i+7]
-
+        schedule = p2.position[i:i+7]
+        # print("Running on p2", schedule)
         # If the bus alredy exists in the buses_busy, continue to the next 
         if schedule[2] in buses_busy:
             # print("exist")
@@ -167,7 +168,12 @@ def crossover(p1, p2):
         if found == True:
             continue
 
-        # else - cheking for another charger
+        schedulesForFitting.append(schedule)
+
+    print("len of schedulesForFitting:", len(schedulesForFitting))
+    # cheking for another charger for the schedules are overlap on the chargers
+    for schedule in schedulesForFitting:
+        print("Running on schedulesForFitting", schedule)
         for charger in s_chargers_busy.keys():
             # if the charger have schedules - cheking if I can add the charging to the charger..
             if len(s_chargers_busy[charger]) > 0:

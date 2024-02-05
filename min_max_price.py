@@ -29,6 +29,7 @@ def min_max_price():
     #     return 0, 0
     
 def minPrice(time, entry_time, exit_time, prices, ampere, voltage):
+    
     prices = sorted(prices, key=lambda x: x['finalPriceInAgorot'])
     distinct_prices = sorted(set(entry['finalPriceInAgorot'] for entry in prices))
     distinct_prices_list = list(distinct_prices)
@@ -38,13 +39,12 @@ def minPrice(time, entry_time, exit_time, prices, ampere, voltage):
                 price = distinct_prices_list[0]/100 * ampere *time/1000./60./60. * voltage/1000
                 return price
             else:
-                price = distinct_prices_list[0]/100 * ampere *(exit_time-entry_time)/1000./60./60. * voltage/1000
-                price +=distinct_prices_list[1]/100 * ampere *(time-(exit_time-entry_time))/1000./60./60. * voltage/1000
+                price = distinct_prices_list[0]/100 * ampere *(i['to']-entry_time)/1000./60./60. * voltage/1000
+                price +=distinct_prices_list[1]/100 * ampere *(time-(i['to']-entry_time))/1000./60./60. * voltage/1000
                 return price
         else:
             price = distinct_prices_list[1]/100 * ampere *time/1000./60./60. * voltage/1000
             return price
-    return 0, 1
 
 def maxPrice(time, entry_time, exit_time, prices, ampere, voltage):
     prices = sorted(prices, key=lambda x: x['finalPriceInAgorot'])
@@ -62,4 +62,3 @@ def maxPrice(time, entry_time, exit_time, prices, ampere, voltage):
         else:
             price = distinct_prices_list[0]/100 * ampere *time/1000./60./60. * voltage/1000
             return price
-    

@@ -14,6 +14,16 @@ amperLevels = inputs["amperLevels"]
 logging.basicConfig(filename='init_pop.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
 def init_pop(npop):
+    init_pop = readingFromDb.read_init_pop('20240107', npop)
+    pop = []
+    for i in range(npop):
+        filtered_init_pop = init_pop[init_pop['solutionCode'] == i+1]
+        sol = filtered_init_pop.drop(columns=['solutionCode']).to_dict(orient='records')
+        pop.append(sol)
+        logging.info(f"Added solution {i+1}")
+    return pop
+
+def _init_pop(npop):
     busses_keys = list(busses.keys())
     chargers_keys = list(chargers.keys())
     pop = []
@@ -60,8 +70,10 @@ def init_pop(npop):
                     charger_ind+=1
                 logging.info(f"Processed bus {bus} and charger {charger} at {time.time()}")
         pop.append(sol)
+        print(sol)
         print(f"Added solution {i}")
         logging.info(f"Added solution {i}")
+    print(pop)
     return pop
 
 def calculate_schedule_price(ampere, startTime, endTime, prices, voltage):

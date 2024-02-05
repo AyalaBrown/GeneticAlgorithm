@@ -5,7 +5,7 @@ def convert_population_to_numeric(population):
     for schedule in population:
         numeric_schedule = []
         for entry in schedule:
-            numeric_schedule.extend([entry["chargerCode"], entry["connectorId"], entry["trackCode"], entry["startTime"], entry["endTime"], entry["ampere"], entry["price"]])
+            numeric_schedule.extend([entry["chargerCode"], entry["connectorId"], entry["trackCode"], entry["startTime"], entry["endTime"], entry["ampere"], entry["finalPriceInAgorot"]])
         numeric_population.append(numeric_schedule)
     return numeric_population
 

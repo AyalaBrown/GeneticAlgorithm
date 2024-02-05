@@ -2,11 +2,24 @@ import pyodbc
 import pandas as pd
 import json
 
-
 server = '192.168.16.3'
 database = 'electric_ML'
 username = 'Ayala'
 password = 'isr1953'
+
+def read_init_pop(date, npop):
+    cnxn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
+    cursor = cnxn.cursor()
+    query = f"exec dbo.Electric_InitialPopulation '{date}', {npop}"
+    pop = {}
+    try:
+        pop = pd.read_sql(query, cnxn)
+    except Exception as e:
+        print("Error occurred while reading from SQL:", str(e))
+    finally:
+        cursor.close()
+        cnxn.close()
+    return pop
 
 def read_data():
     cnxn = pyodbc.connect('DRIVER={SQL Server};SERVER='+server+';DATABASE='+database+';UID='+username+';PWD='+ password)
@@ -15,8 +28,7 @@ def read_data():
     b = pd.read_sql(query, cnxn).to_dict(orient='records')
     busses = {}
     for i in b:
-        if i["socStart"] > 0 and i["socStart"] < i["socEnd"] and i["entryTime"] < i["exitTime"]and i["entryTime"] > 0:
-            busses[i["trackCode"]] = {"entryTime": i["entryTime"], "exitTime": i["exitTime"] , "socStart": i["socStart"], "socEnd": i["socEnd"]}
+        busses[i["trackCode"]] = {"entryTime": i["entryTime"], "exitTime": i["exitTime"] , "socStart": i["socStart"], "socEnd": i["socEnd"]}
     query = "exec isrProject_test.dbo.GetChargersList;"
     chrgs = {}
     # chargers = pd.read_sql(query, cnxn).to_dict(orient='records')
@@ -34,7 +46,7 @@ def read_data():
     prices.extend(prices2)
     query = "exec dbo.GetElectricAmperLevels;"
     amperLevels = pd.read_sql(query, cnxn).to_dict(orient='records')
-    query = "exec  dbo.GetElectricCapacity;"
+    query = "exec dbo.GetElectricCapacity;"
     c = pd.read_sql(query, cnxn)
     capacity = {}
     for i in range(0, len(c)):

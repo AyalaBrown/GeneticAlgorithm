@@ -1,13 +1,15 @@
 import initializations
 
 def fitness(solution, min_cost, max_cost):
+
+    print("fitness, solution: ", solution)
     # try:
-    parameters = initializations.getFunctionInputsDB()
-    busses = parameters["busses"]
-    chargers = parameters["chargers"]
-    maxPower = parameters["maxPower"]
-    capacity = parameters["capacity"]
-    ampereLevels = {level["levelCode"]: {"low": level["low"], "high": level["high"]} for level in parameters["amperLevels"]}
+    data = initializations.getFunctionInputsDB()
+    busses = data["busses"]
+    chargers = data["chargers"]
+    maxPower = data["maxPower"]
+    capacity = data["capacity"]
+    ampereLevels = {level["levelCode"]: {"low": level["low"], "high": level["high"], } for level in data["amperLevels"]}
 
     # constraints
     # constraint 1 - A bus is scheduled to charge while it is in the parking lot
@@ -60,7 +62,6 @@ def fitness(solution, min_cost, max_cost):
     # constraint 6
     level1 = 0
     level2 = 0
-    level3 = 0
     cost6 = 0
     # constraint 7
     chargers_bussy = {charger[0]:{"maxAmpere": chargers[charger]["ampere"], "chargings":[]} for charger in chargers.keys()}
@@ -68,14 +69,13 @@ def fitness(solution, min_cost, max_cost):
     not_good7 = 0
 
     for bus in busses.keys():
-        busses_charge[bus] = {'charge': 0,'soc_start': busses[bus]['socStart'], 'soc_end': busses[bus]['socEnd']}
+        busses_charge[bus] = {'charge': busses[bus]['socStart'],'soc_start': busses[bus]['socStart'], 'soc_end': busses[bus]['socEnd']}
 
     for i in range(0, len(solution), 7):
-        
         chargerCode, connectorId, bus_code, start_time, end_time, ampere, price = solution[i:i+7] 
         voltage = 0
-        if chargerCode in chargers:
-            voltage = chargers[chargerCode]["voltage"]
+        if (chargerCode, connectorId) in chargers:
+            voltage = chargers[(chargerCode, connectorId)]["voltage"]
 
         # constraint 1
         if start_time > end_time:
@@ -106,31 +106,33 @@ def fitness(solution, min_cost, max_cost):
         end_ampere_list.append({'end_time': end_time, 'ampere': ampere, 'voltage': voltage})
 
         # constraint 4
-        if bus_code not in busses_charge:
+        if bus_code not in busses_charge.keys():
             raise Exception("Bus code not found")
         charging_time = end_time - start_time
         if bus_code in capacity:
             busses_charge[bus_code]['charge']+= charging_time/1000/60*ampere*voltage/1000/capacity[int(bus_code)]
-        for bus in busses_charge:
-            if busses_charge[bus]['charge'] > 95 or busses_charge[bus]['charge'] < busses_charge[bus]['soc_end']:
-                not_good4+=1
-            else:
-                good4+=1
         
         # constraint 5
         financial_cost += price
 
         #constraint 6
-        if ampereLevels[1]["low"] <= ampere and ampere <= ampereLevels[1]["high"]:
+        if ampereLevels[1]["low"] <= ampere and ampere <= ampereLevels[2]["high"]:
             level1+=1
-        if ampereLevels[2]["low"] <= ampere and ampere <= ampereLevels[2]["high"]:
+        if ampereLevels[3]["low"] <= ampere and ampere <= ampereLevels[5]["high"]:
             level2+=1
-        if ampereLevels[3]["low"] <= ampere and ampere <= ampereLevels[3]["high"]:
-            level3+=1
 
         # constraint 7
         chargers_bussy[chargerCode]["chargings"].append({"time": start_time, "type": "start", "ampere": ampere})
         chargers_bussy[chargerCode]["chargings"].append({"time": end_time, "type": "end", "ampere": ampere})
+
+    for bus in busses_charge:
+        if busses_charge[bus]['charge'] > 95 or busses_charge[bus]['charge'] < busses_charge[bus]['soc_end']:
+            # print(busses_charge[bus]['charge'], busses_charge[bus]['soc_end'])
+            not_good4+=1
+        else:
+            good4+=1
+
+    # print( not_good4, good4)
 
     for charger in chargers_bussy:
         if len(chargers_bussy[charger]["chargings"]) > 0:
@@ -147,15 +149,17 @@ def fitness(solution, min_cost, max_cost):
                 else:
                     currAmpere-=charging["ampere"] 
 
-
     sum_of_schedules = good1+not_good1
+    print(good1, not_good1)
     cost1 = w1*not_good1/(good1+not_good1)
     cost2 = w2*not_good2/(good2+not_good2)
     cost3 = w3*calculate_cost_3(start_ampere_list, end_ampere_list, maxPower)
     cost4 = w4*not_good4/(good4+not_good4)
+    # print(financial_cost,max_cost,min_cost)
     cost5 = w5*(financial_cost-min_cost)/(max_cost-min_cost)
-    cost6 = w6*(level1/sum_of_schedules+0.5*level2/sum_of_schedules+0.25*level3/sum_of_schedules)
+    cost6 = w6*(level1/sum_of_schedules+0.5*level2/sum_of_schedules)
     cost7 = w7*not_good7/(good7+not_good7)
+    # print(cost1,cost2,cost3,cost4,cost5,cost6,cost7)
     total_cost = cost1 + cost2 + cost3 + cost4 + cost5 + cost6 + cost7
     return total_cost
     # except Exception as e:
