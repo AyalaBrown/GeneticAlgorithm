@@ -17,9 +17,11 @@ def init_pop(npop):
     init_pop = readingFromDb.read_init_pop('20240107', npop)
     pop = []
     for i in range(npop):
+        print(init_pop)
         filtered_init_pop = init_pop[init_pop['solutionCode'] == i+1]
         sol = filtered_init_pop.drop(columns=['solutionCode']).to_dict(orient='records')
         pop.append(sol)
+        print(f"Added solution {i+1}")
         logging.info(f"Added solution {i+1}")
     return pop
 

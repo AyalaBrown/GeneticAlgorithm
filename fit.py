@@ -1,8 +1,7 @@
 import initializations
 
 def fitness(solution, min_cost, max_cost):
-
-    print("fitness, solution: ", solution)
+    # print("fitness, solution: ", solution)
     # try:
     data = initializations.getFunctionInputsDB()
     busses = data["busses"]
@@ -12,9 +11,8 @@ def fitness(solution, min_cost, max_cost):
     ampereLevels = {level["levelCode"]: {"low": level["low"], "high": level["high"], } for level in data["amperLevels"]}
 
     # constraints
-    # constraint 1 - A bus is scheduled to charge while it is in the parking lot
-    # constraint 2 - There are not conflicts between busses and chargers
-    # constraint 3 - The the total consumption of the ampere in the parking lot not exceeds the max ampere 
+    # constraint 1 - A bus is scheduled to charge while it is in the parking lot & There are not conflicts between busses and chargers
+    # constraint 3 - The total consumption of the ampere in the parking lot not exceeds the max ampere 
     # constraint 4 - A bus charging enough for it's tasks
     # constraint 5 - Prefer the cheapest plan
     # constraint 6 - Charging as little as possible at the high level
@@ -23,8 +21,6 @@ def fitness(solution, min_cost, max_cost):
     # weights:
     # constraint 1
     w1 = 0.16
-    # constraint 2
-    w2 = 0.16
     # constraint 3 
     w3 = 0.16
     # constraint 4
@@ -150,9 +146,9 @@ def fitness(solution, min_cost, max_cost):
                     currAmpere-=charging["ampere"] 
 
     sum_of_schedules = good1+not_good1
-    print(good1, not_good1)
+    # print(good1, not_good1)
     cost1 = w1*not_good1/(good1+not_good1)
-    cost2 = w2*not_good2/(good2+not_good2)
+    # cost2 = w2*not_good2/(good2+not_good2)
     cost3 = w3*calculate_cost_3(start_ampere_list, end_ampere_list, maxPower)
     cost4 = w4*not_good4/(good4+not_good4)
     # print(financial_cost,max_cost,min_cost)
