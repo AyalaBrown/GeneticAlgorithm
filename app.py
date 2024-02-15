@@ -1,9 +1,7 @@
-# https://www.youtube.com/watch?v=PhJgktRB1AM
 import matplotlib.pyplot as plt
 from ypstruct import structure
 import fit
 import ga
-import convertions
 import readingFromDb
 
 # problem definition

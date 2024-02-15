@@ -121,7 +121,9 @@ def faster(ampereLevel, chargerAmpere):
     if ampereLevel == 1:
         return False, False 
     new_ampere = amperLevels[ampereLevel-1]["low"]+(amperLevels[ampereLevel-1]["high"]-amperLevels[ampereLevel-1]["low"])/2
-    return new_ampere, ampereLevel-1 if new_ampere < chargerAmpere else chargerAmpere, ampereLevel
+    if(new_ampere < chargerAmpere):
+        return new_ampere, ampereLevel-1
+    return chargerAmpere, ampereLevel
 
 def append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger):
     chargers_busy[charger].append({'start_time':start_time , 'end_time': end_time})

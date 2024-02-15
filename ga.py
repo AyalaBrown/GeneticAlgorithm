@@ -34,7 +34,7 @@ def run(problem, params):
     print("min max starting")
     min_cost, max_cost = min_max_price.min_max_price()
     print("min max ending")
-    
+
     # Initialize Population
     pop = empty_individual.repeat(npop)
     for i in range(0, npop):
@@ -68,6 +68,8 @@ def run(problem, params):
             c2 = mutate(p1)
             c3 = mutate(p2)
 
+            print(len(p1.position)/7, len(p2.position)/7, len(c1.position)/7, len(c2.position)/7, len(c3.position)/7)
+
             # Add Offspring to popc
             popc.append(c1)
             popc.append(c2)   
@@ -100,138 +102,53 @@ def run(problem, params):
     return out
 
 def crossover(p1, p2):
-    offspring = p1.deepcopy()
+    offspring = p1.deepcopy() # Create a copy of the first parent
     offspring.position = None
 
     data = initializations.getFunctionInputsDB()
     chargers  =  data['chargers']
-    buses = data['busses']
 
-    chargers_busy = defaultdict(list)
-    buses_busy = set()
-    schedulesForFitting = []
+    chargers_busy = {}  # Dictionary to track busy chargers and their schedules
 
-    # Randomly select a charger index
-    charger_index = random.randrange(0, len(p1.position), 7)
+    l = len(p1.position) if len(p1.position) < len(p2.position) else len(p2.position)
 
-    offspring.position = p1.position[:(charger_index+7)]
+    # Randomly select a crossover point
+    crossover_point = random.randrange(0, l, 7)
 
-    for i in range(0, len(offspring.position), 7):
-        schedule = offspring.position[i:i+7]
-        buses_busy.add(schedule[2])
-        chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
+    # Slice the offspring position based on the crossover point
+    offspring.position = p1.position[:crossover_point] + p2.position[crossover_point:]
 
-    for charger in chargers.keys():
-        if charger not in chargers_busy:
-            chargers_busy[charger] = []
+    # Initialize a list to store schedules that need fitting
+    schedules_for_fitting = []
 
-    s_chargers_busy = dict(sorted(chargers_busy.items(), key=lambda x: len(x[1]), reverse=True))
-
-    for i in range(0, len(p2.position), 7):
-        schedule = p2.position[i:i+7]
-        if schedule[2] in buses_busy:
-            continue
-        
-        buses_busy.add(schedule[2])
-
-        charger_key = (schedule[0], schedule[1])
-        if len(s_chargers_busy[charger_key]) == 0:
-            s_chargers_busy[charger_key].append({'from': schedule[3], 'to': schedule[4]})
-            offspring.position += schedule
-            continue
-
-        found = False
-        s_chargers_busy[charger_key].sort(key=lambda x: x['from'])
-        start_slot = 0
-        for j in s_chargers_busy[charger_key]:
-            end_slot = j['from']
-            if schedule[3] >= start_slot and schedule[4] <= end_slot:
-                s_chargers_busy[charger_key].append({'from': schedule[3], 'to': schedule[4]})
+    i = 0
+    # Iterate through the schedules in the offspring's position
+    while i < len(offspring.position):
+        schedule = offspring.position[i:i+7]  # Extract the schedule
+        # Check if the charger is already busy during the schedule
+        if (schedule[0], schedule[1]) in chargers_busy:
+            busy_slots = chargers_busy[(schedule[0], schedule[1])]
+            overlapping = any(sch['from'] <= schedule[4] and sch['to'] >= schedule[3] for sch in busy_slots)
+            if not overlapping:  # If no overlap, add to busy chargers
+                chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
+                i += 7
+            else:  # If overlap, add to schedules for fitting
+                schedules_for_fitting.append(schedule)
+                offspring.position[i:i+7] = []
+        else:  # Charger is not busy, add to busy chargers
+            chargers_busy[(schedule[0], schedule[1])] = [{'from': schedule[3], 'to': schedule[4]}]
+            i += 7
+    print("schedules for fitting: ", len(schedules_for_fitting))
+    # Fit schedules that need fitting into available chargers
+    for schedule in schedules_for_fitting:
+        for charger, busy_slots in chargers_busy.items():
+            overlapping = any(sch['from'] <= schedule[4] and sch['to'] >= schedule[3] for sch in busy_slots)
+            if not overlapping and schedule[6] <= chargers[charger]['ampere']:
+                chargers_busy[charger].append({'from': schedule[3], 'to': schedule[4]})
+                print(charger)
+                schedule[0], schedule[1] = charger
                 offspring.position += schedule
-                found = True
                 break
-            start_slot = j['to']
-        if found:
-            continue
-
-        schedulesForFitting.append(schedule)
-
-    if schedulesForFitting:
-        for schedule in schedulesForFitting:
-            for charger, schedules in s_chargers_busy.items():
-                if len(schedules) > 0:
-                    if schedule[6] <= chargers[charger]['ampere']:
-                        start_slot = 0
-                        for sch in schedules:
-                            end_slot = sch['from']
-                            if schedule[3] >= start_slot and schedule[4] <= end_slot:
-                                schedules.append({'from': schedule[3], 'to': schedule[4]})
-                                schedule[0], schedule[1] = charger
-                                offspring.position += schedule
-                                found = True
-                                break
-                            start_slot = sch['to']
-                        if found:
-                            break
-                    else:
-                        ampere, ampereLevel = initialPopulation.rand_ampere(chargers[charger]['ampere'])
-                        time = initialPopulation.charging_time(ampereLevel, schedule[2])
-                        bus = schedule[2]
-                        while buses[bus]['exitTime'] - buses[bus]['entryTime'] < time:
-                            _ampere, _ampereLevel = initialPopulation.faster(ampereLevel, chargers[charger]['ampere'])
-                            if _ampere == False or _ampereLevel == ampereLevel:
-                                found = False
-                                break
-                            time = initialPopulation.charging_time(_ampereLevel, schedule[2])
-                            ampere, ampereLevel = _ampere, _ampereLevel
-                            found = True
-                        if not found:
-                            continue
-                        start_slot = 0
-                        for sch in schedules:
-                            end_slot = sch['from']
-                            if schedule[3] >= start_slot and schedule[4] <= end_slot:
-                                schedules.append({'from': schedule[3], 'to': schedule[4]})
-                                schedule[0], schedule[1] = charger
-                                if schedule[3] + time > buses[bus]['exitTime']:
-                                    schedule[3] = buses[bus]['entryTime']
-                                schedule[4] = schedule[3] + time
-                                schedule[5] = ampere
-                                offspring.position += schedule
-                                found = True
-                                break
-                            start_slot = sch['to']
-                        if found:
-                            break
-                else:
-                    if schedule[6] <= chargers[charger]['ampere']:
-                        schedules.append({'from': schedule[3], 'to': schedule[4]})
-                        schedule[0], schedule[1] = charger
-                        offspring.position += schedule
-                        found = True
-                        break
-                    else:
-                        ampere, ampereLevel = initialPopulation.rand_ampere(chargers[charger]['ampere'])
-                        time = initialPopulation.charging_time(ampereLevel, schedule[2])
-                        bus = schedule[2]
-                        while buses[bus]['exitTime'] - buses[bus]['entryTime'] < time:
-                            _ampere, _ampereLevel = initialPopulation.faster(ampereLevel, chargers[charger]['ampere'])
-                            if _ampere == False or _ampereLevel == ampereLevel:
-                                found = False
-                                break
-                            time = initialPopulation.charging_time(_ampereLevel, schedule[2])
-                            ampere, ampereLevel = _ampere, _ampereLevel
-                            found = True
-                        if not found:
-                            continue
-                        schedules.append({'from': schedule[3], 'to': schedule[4]})
-                        schedule[0], schedule[1] = charger
-                        if schedule[3] + time > buses[bus]['exitTime']:
-                            schedule[3] = buses[bus]['entryTime']
-                        schedule[4] = schedule[3] + time
-                        schedule[5] = ampere
-                        offspring.position += schedule
-                        break
     return offspring
 
 def _crossover(p1, p2):
