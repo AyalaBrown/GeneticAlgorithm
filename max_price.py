@@ -7,7 +7,7 @@ def min_max_price():
     """
     data = initializations.getFunctionInputsDB()
     busses = data["busses"]
-    prices = data["prices"]
+    prices = sorted(data["prices"], key=lambda x: x['finalPriceInAgorot'])
     amperLevels = data["amperLevels"]
     total_min_price = 0
     total_max_price = 0
@@ -30,7 +30,6 @@ def min_max_price():
     
 def minPrice(time, entry_time, exit_time, prices, ampere, voltage):
     
-    prices = sorted(prices, key=lambda x: x['finalPriceInAgorot'])
     distinct_prices = sorted(set(entry['finalPriceInAgorot'] for entry in prices))
     distinct_prices_list = list(distinct_prices)
     for i in prices:
@@ -62,3 +61,32 @@ def maxPrice(time, entry_time, exit_time, prices, ampere, voltage):
         else:
             price = distinct_prices_list[0]/100 * ampere *time/1000./60./60. * voltage/1000
             return price
+        
+def max_price():
+    data = initializations.getFunctionInputsDB()
+    busses = data["busses"]
+    prices = sorted(data["prices"], key=lambda x: x['from'])
+    chargers = data["chargers"]
+
+    start_time = min(busses.values(), key=lambda x: x['entryTime'])['entryTime']
+    end_time = max(busses.values(), key=lambda x: x['exitTime'])['exitTime']
+
+    _prices = [] # ampere * voltage/1000
+    for k in range(0, len(prices)):
+        if (start_time >= prices[k]['from'] and start_time<prices[k]['to']) :
+            print(0)
+            _prices.append(prices[k]['finalPriceInAgorot'] * (prices[k]['to'] - start_time)/1000./60./60.)
+        elif (end_time >= prices[k]['from'] and end_time<prices[k]['to']):
+            print(1)
+            _prices.append(prices[k]['finalPriceInAgorot'] * (end_time - prices[k]['from'])/1000./60./60.)
+        elif (start_time <= prices[k]['from'] and end_time>=prices[k]['to']):
+            print(2)
+            _prices.append(prices[k]['finalPriceInAgorot'] * (prices[k]['to'] - prices[k]['from'])/1000./60./60.)
+
+    price = 0
+    for charger in chargers:
+        ampere = chargers[charger]['ampere']
+        voltage = chargers[charger]['voltage']
+        for i in range(len(_prices)):
+            price += _prices[i]*ampere*voltage/1000.
+    return price

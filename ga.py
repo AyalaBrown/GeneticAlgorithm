@@ -4,7 +4,7 @@ import convertions
 import initializations
 import random
 import initialPopulation
-import min_max_price
+import max_price
 import test
 from collections import defaultdict, deque
 
@@ -30,10 +30,10 @@ def run(problem, params):
     bestsol.cost = np.inf
 
     init_pop = convertions.initial_population(npop)
-
-    print("min max starting")
-    min_cost, max_cost = min_max_price.min_max_price()
-    print("min max ending")
+    
+    # min = 0, max = all the chargers are charging all the time. 
+    min_cost = 0
+    max_cost = max_price.max_price()
 
     # Initialize Population
     pop = empty_individual.repeat(npop)
@@ -107,6 +107,8 @@ def crossover(p1, p2):
 
     data = initializations.getFunctionInputsDB()
     chargers  =  data['chargers']
+    busses = data['busses']
+    ampereLevels = data['amperLevels']
 
     chargers_busy = {}  # Dictionary to track busy chargers and their schedules
 
@@ -128,7 +130,7 @@ def crossover(p1, p2):
         # Check if the charger is already busy during the schedule
         if (schedule[0], schedule[1]) in chargers_busy:
             busy_slots = chargers_busy[(schedule[0], schedule[1])]
-            overlapping = any(sch['from'] <= schedule[4] and sch['to'] >= schedule[3] for sch in busy_slots)
+            overlapping = any(sch['from']+random.randint(10,20) <= schedule[3] and sch['to'] >= schedule[4]+random.randint(10,20) for sch in busy_slots)
             if not overlapping:  # If no overlap, add to busy chargers
                 chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
                 i += 7
@@ -141,14 +143,48 @@ def crossover(p1, p2):
     print("schedules for fitting: ", len(schedules_for_fitting))
     # Fit schedules that need fitting into available chargers
     for schedule in schedules_for_fitting:
+        found = False
         for charger, busy_slots in chargers_busy.items():
-            overlapping = any(sch['from'] <= schedule[4] and sch['to'] >= schedule[3] for sch in busy_slots)
+            overlapping = any(sch['from']+random.randint(10,20) <= schedule[3] and sch['to'] >= schedule[4]+random.randint(10,20) for sch in busy_slots)
             if not overlapping and schedule[6] <= chargers[charger]['ampere']:
                 chargers_busy[charger].append({'from': schedule[3], 'to': schedule[4]})
-                print(charger)
                 schedule[0], schedule[1] = charger
                 offspring.position += schedule
+                found = True
                 break
+        
+        ampereLevel = 0
+        for i in range(0, len(ampereLevels)):
+            if ampereLevels[i]['low'] < schedule[5] < ampereLevels[i]['high']:
+                ampereLevel = i
+                break
+        ampereLevel+=1
+        while not found and ampereLevel<5:
+            time = initialPopulation.charging_time(ampereLevel+1,schedule[2])
+            if busses[schedule[2]]['exitTime'] - busses[schedule[2]]['entryTime'] >= time:
+                start = busses[schedule[2]]['entryTime']
+                end = busses[schedule[2]]['entryTime']+time
+                for charger, busy_slots in chargers_busy.items():
+                    overlapping = any(sch['from']+random.randint(10,20) <= start and sch['to'] >= end+random.randint(10,20) for sch in busy_slots)
+                    if not overlapping and ampereLevels[ampereLevel]['avgAmpere'] <= chargers[charger]['ampere']:
+                        chargers_busy[charger].append({'from': start, 'to': end})
+                        schedule[0], schedule[1] = charger
+                        schedule[3], schedule[4], schedule[5] = start, end, ampereLevels[ampereLevel]['avgAmpere']
+                        offspring.position += schedule
+                        found = True
+                        break  
+            ampereLevel+=1
+        if not found:
+            for charger in chargers:
+                if charger not in chargers_busy:
+                    chargers_busy[charger] = []
+                    chargers_busy[charger].append({'from': schedule[3], 'to': schedule[4]})
+                    schedule[0], schedule[1] = charger
+                    offspring.position += schedule
+                    found = True
+                    break
+        if not found:
+            print("didnt found charger :(")
     return offspring
 
 def _crossover(p1, p2):
