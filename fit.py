@@ -1,7 +1,7 @@
 import initializations
+from collections import defaultdict
 
 def fitness(solution, min_cost, max_cost):
-    # print("fitness, solution: ", solution)
     # try:
     data = initializations.getFunctionInputsDB()
     busses = data["busses"]
@@ -16,21 +16,22 @@ def fitness(solution, min_cost, max_cost):
     # The ampere in each charger dosent over the max ampere of the charger
 
     # Constraints:
-    # constraint 1 - The total consumption of the ampere in the parking lot not exceeds the max ampere 
-    # constraint 2 - Prefer the cheapest plan
-    # constraint 3 - Charging as little as possible at the high level ? check why it 0 all the time.
+    # constraint 1 - The total consumption of the ampere in the parking lot not exceeds the max ampere.
+    # constraint 2 - Prefer the cheapest plan.
+    # constraint 3 - Charging as little as possible at the high level.
+    # constraint 4 - The time interval between different loads on the same charger is as large as possible.
 
-    # weights:
+    # Weights:
     # constraint 1 
     w1 = 0.50
     # constraint 2
     w2 = 0.35
     # constraint 3
-    w3 = 0.25
+    w3 = 0.15
+    # constraint 4
+    w4 = 0.10
 
-    total_cost = 0
-
-    # parameters:
+    # Parameters:
     # constraint 1 
     start_ampere_list = []
     end_ampere_list = []
@@ -42,12 +43,16 @@ def fitness(solution, min_cost, max_cost):
     level1 = 0
     level2 = 0
     cost3 = 0
+    # constraint 4
+    chargers_busy = defaultdict(list)
+    slots = 0
 
     sum_of_schedules = 0
 
     for i in range(0, len(solution), 7):
         sum_of_schedules+=1
         chargerCode, connectorId, bus_code, start_time, end_time, ampere, price = solution[i:i+7] 
+        chargers_busy[(chargerCode, connectorId)].append({'from': start_time, 'to': end_time})
         voltage = 0
         if (chargerCode, connectorId) in chargers:
             voltage = chargers[(chargerCode, connectorId)]["voltage"]
@@ -59,18 +64,32 @@ def fitness(solution, min_cost, max_cost):
         # constraint 2
         financial_cost += price
 
-        #constraint 3
-        if ampereLevels[1]["low"] <= ampere and ampere <= ampereLevels[2]["high"]:
+        # constraint 3
+        if ampereLevels[5]["low"] <= ampere and ampere <= ampereLevels[4]["high"]:
             level1+=1
-        if ampereLevels[3]["low"] <= ampere and ampere <= ampereLevels[5]["high"]:
+        if ampereLevels[3]["low"] <= ampere and ampere <= ampereLevels[2]["high"]:
             level2+=1
 
-    print("maxPower", maxPower)
+    # constraint 4
+    for i in chargers_busy:
+        if len(chargers_busy[i]) > 1:
+            start = chargers_busy[i][0]['to']
+            for j in range(1, len(chargers_busy[i])):
+                end = chargers_busy[i][j]['from']
+                slot = end-start
+                if slot > 1200000:
+                    slot = 1200000
+                if slot < 600000:
+                    slot = 600000
+                slots += (slot-600000)/(1200000-600000)
+
+
     cost1 = w1*calculate_cost_3(start_ampere_list, end_ampere_list, maxPower)
     cost2 = w2*(financial_cost-min_cost)/(max_cost-min_cost)
     cost3 = w3*(level1/sum_of_schedules+0.5*level2/sum_of_schedules)
-    print("cost1, cost2, cost3", cost1, cost2, cost3)
-    total_cost = cost1 + cost2 + cost3
+    cost4 = w4*(slots/sum_of_schedules)
+    print("cost1, cost2, cost3, cost4", cost1, cost2, cost3, cost4)
+    total_cost = cost1 + cost2 + cost3 + cost4
 
     return total_cost
     # except Exception as e:
