@@ -23,13 +23,13 @@ def fitness(solution, min_cost, max_cost):
 
     # Weights:
     # constraint 1 
-    w1 = 0.50
+    w1 = 0
     # constraint 2
-    w2 = 0.35
+    w2 = 0.90
     # constraint 3
-    w3 = 0.15
+    w3 = 0.02
     # constraint 4
-    w4 = 0.10
+    w4 = 0.08
 
     # Parameters:
     # constraint 1 
@@ -88,6 +88,7 @@ def fitness(solution, min_cost, max_cost):
     cost2 = w2*(financial_cost-min_cost)/(max_cost-min_cost)
     cost3 = w3*(level1/sum_of_schedules+0.5*level2/sum_of_schedules)
     cost4 = w4*(slots/sum_of_schedules)
+    # print("financial_cost, min_cost, max_cost", financial_cost, min_cost, max_cost)
     print("cost1, cost2, cost3, cost4", cost1, cost2, cost3, cost4)
     total_cost = cost1 + cost2 + cost3 + cost4
 

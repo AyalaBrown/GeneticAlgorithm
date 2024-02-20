@@ -38,6 +38,11 @@ def run(problem, params):
     # Initialize Population
     pop = empty_individual.repeat(npop)
     for i in range(0, npop):
+        financial_cost = 0
+        for j in range(0, len(init_pop[i]), 7):
+            _, _, _, _, _, _, price = init_pop[i][j:j+7] 
+            financial_cost += price
+        print(f"financial_cost {i} : {financial_cost}")
         pop[i].position = init_pop[i]
         pop[i].cost = costfunc(pop[i].position, min_cost, max_cost)
         if pop[i].cost < bestsol.cost:
@@ -135,6 +140,7 @@ def crossover(p1, p2):
     schedules_for_fitting = []
 
     i = 0
+    print("befor: ", len(offspring.position)/7)
     # Iterate through the schedules in the offspring's position
     while i < len(offspring.position):
         schedule = offspring.position[i:i+7]  # Extract the schedule
@@ -151,6 +157,8 @@ def crossover(p1, p2):
         else:  # Charger is not busy, add to busy chargers
             chargers_busy[(schedule[0], schedule[1])] = [{'from': schedule[3], 'to': schedule[4]}]
             i += 7
+    print("fitting: ", len(schedules_for_fitting))
+    print("after: ", len(offspring.position)/7)
     # print("schedules for fitting: ", len(schedules_for_fitting))
     # Fit schedules that need fitting into available chargers
             
@@ -179,23 +187,24 @@ def crossover(p1, p2):
         for window in cheapest_price_windows:
             time = schedule[4]-schedule[3]
             if window[0] <= entry_time:
-                offspring, found = find_charger(offspring, schedule, entry_time, entry_time+time, chargers_busy, chargers, ampereLevels, busses)
+                offspring, found, chargers_busy = find_charger(offspring, schedule, entry_time, entry_time+time, chargers_busy, chargers, ampereLevels, busses)
                 if offspring == None:
                     print("in window[0] <= entry_time", found)
                 if found == True:
                     break
             if window[0] > entry_time and exit_time <= window[1]:
-                offspring, found = find_charger(offspring, schedule, exit_time-time, exit_time, chargers_busy, chargers, ampereLevels, busses)
+                offspring, found, chargers_busy = find_charger(offspring, schedule, exit_time-time, exit_time, chargers_busy, chargers, ampereLevels, busses)
                 if offspring == None:
                     print("in window[0] > entry_time and exit_time <= window[1]", found)
                 if found == True:
                     break
         if not found:
-            offspring, found = find_charger(offspring, schedule, schedule[3], schedule[4], chargers_busy, chargers, ampereLevels, busses)
-    if not found:
-        print("No charger found:(")
+            offspring, found, chargers_busy = find_charger(offspring, schedule, schedule[3], schedule[4], chargers_busy, chargers, ampereLevels, busses)
+        if not found:
+            print("No charger found:(")
     if offspring == None:
         print("None", found)
+    print("after fitting: ", len(offspring.position)/7)
     return offspring
         
 def find_charger(offspring, schedule, start, end, chargers_busy, chargers, ampereLevels, busses):
@@ -204,6 +213,7 @@ def find_charger(offspring, schedule, start, end, chargers_busy, chargers, amper
         overlapping = any(sch['from']+random.randint(600000,1200000) <= start and sch['to'] >= end+random.randint(600000,1200000) for sch in busy_slots)
         if not overlapping and schedule[6] <= chargers[charger]['ampere']:
             chargers_busy[charger].append({'from': start, 'to': end})
+            chargers_busy[charger].sort(key=lambda x:x['from'])
             schedule[0], schedule[1] = charger
             schedule[3], schedule[4] = start, end
             offspring.position += schedule
@@ -225,6 +235,7 @@ def find_charger(offspring, schedule, start, end, chargers_busy, chargers, amper
                 overlapping = any(sch['from']+random.randint(600000,1200000) <= start and sch['to'] >= end+random.randint(600000,1200000) for sch in busy_slots)
                 if not overlapping and ampereLevels[ampereLevel]['avgAmpere'] <= chargers[charger]['ampere']:
                     chargers_busy[charger].append({'from': start, 'to': end})
+                    chargers_busy[charger].sort(key=lambda x:x['from'])
                     schedule[0], schedule[1] = charger
                     schedule[3], schedule[4], schedule[5] = start, end, ampereLevels[ampereLevel]['avgAmpere']
                     offspring.position += schedule
@@ -236,13 +247,13 @@ def find_charger(offspring, schedule, start, end, chargers_busy, chargers, amper
             if charger not in chargers_busy:
                 chargers_busy[charger] = []
                 chargers_busy[charger].append({'from': start, 'to': end})
+                chargers_busy[charger].sort(key=lambda x:x['from'])
                 schedule[0], schedule[1] = charger
                 schedule[3], schedule[4] = start, end
                 offspring.position += schedule
                 found = True
                 break
-    return offspring, found
-
+    return offspring, found, chargers_busy
 
 def _crossover2(p1, p2):
     offspring = p1.deepcopy() # Create a copy of the first parent
@@ -311,6 +322,7 @@ def _crossover2(p1, p2):
                     overlapping = any(sch['from']+random.randint(10,20) <= start and sch['to'] >= end+random.randint(10,20) for sch in busy_slots)
                     if not overlapping and ampereLevels[ampereLevel]['avgAmpere'] <= chargers[charger]['ampere']:
                         chargers_busy[charger].append({'from': start, 'to': end})
+                        chargers_busy[charger].sort(key=lambda x:x['from'])
                         schedule[0], schedule[1] = charger
                         schedule[3], schedule[4], schedule[5] = start, end, ampereLevels[ampereLevel]['avgAmpere']
                         offspring.position += schedule
@@ -507,9 +519,9 @@ def mutate(x):
             price = initialPopulation.calculate_schedule_price(_ampere, start_time, start_time+time, prices, chargers[(charger_code, connector_id)]["voltage"])
             if start_time+time<offspring.position[i+3]:
                 print(f" 000 time: {time} start time: {start_time} offspring[i+3]: {offspring.position[i+3]}")
-            offspring.position[i+4] = start_time+time
-            offspring.position[i+5] = _ampere
-            offspring.position[i+6] = price
+            offspring.position[i+4] = start_time+time # changing the schedule time
+            offspring.position[i+5] = _ampere # changing the schedule ampere
+            offspring.position[i+6] = price # changing the schedule price 
             break
         else:
             for j in range(0, len(offspring.position), 7):

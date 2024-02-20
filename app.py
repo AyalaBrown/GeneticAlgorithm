@@ -10,8 +10,8 @@ problem.costfunc = fit.fitness
 
 # GA parameters
 params = structure()
-params.maxit = 100                                                                                                                                                                                  
-params.npop = 2
+params.maxit = 500                                                                                                                                                                                  
+params.npop = 10
 params.beta = 1
 params.pc = 1
 
