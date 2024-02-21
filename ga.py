@@ -127,7 +127,7 @@ def crossover(p1, p2):
     prices = data['prices']
 
     chargers_busy = {}  # Dictionary to track busy chargers and their schedules
-
+    buses_busy = [] 
     l = len(p1.position) if len(p1.position) < len(p2.position) else len(p2.position)
 
     # Randomly select a crossover point
@@ -140,14 +140,38 @@ def crossover(p1, p2):
     schedules_for_fitting = []
 
     i = 0
-    print("befor: ", len(offspring.position)/7)
+    while i < len(offspring.position):
+        schedule = offspring.position[i:i+7]
+        if schedule[2] not in buses_busy:
+           buses_busy.append(schedule[2])
+           i+=7
+        else:
+            offspring.position[i:i+7] = []
+    
+    for i in range(0, len(p1.position), 7):
+        schedule = p1.position[i:i+7]
+        if schedule[2] not in buses_busy:
+           offspring.position.extend(schedule)
+           buses_busy.append(schedule[2])
+
+    for i in range(0, len(p2.position), 7):
+        schedule = p2.position[i:i+7]
+        if schedule[2] not in buses_busy:
+           offspring.position.extend(schedule)
+           buses_busy.append(schedule[2])       
+
+    i = 0
     # Iterate through the schedules in the offspring's position
     while i < len(offspring.position):
         schedule = offspring.position[i:i+7]  # Extract the schedule
         # Check if the charger is already busy during the schedule
         if (schedule[0], schedule[1]) in chargers_busy:
             busy_slots = chargers_busy[(schedule[0], schedule[1])]
-            overlapping = any(sch['from']+random.randint(10,20) <= schedule[3] and sch['to'] >= schedule[4]+random.randint(10,20) for sch in busy_slots)
+            busy_slots.sort(key = lambda x: x['from'])
+            between = random.randint(600000,1200000)
+            overlapping = any(sch['from']-between <= schedule[3] or sch['to']+between >= schedule[4] for sch in busy_slots)
+            if not overlapping:
+                overlapping = any(sch['from']-between >= schedule[3] and sch['to']+between <= schedule[4]+between for sch in busy_slots)
             if not overlapping:  # If no overlap, add to busy chargers
                 chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
                 i += 7
@@ -157,10 +181,6 @@ def crossover(p1, p2):
         else:  # Charger is not busy, add to busy chargers
             chargers_busy[(schedule[0], schedule[1])] = [{'from': schedule[3], 'to': schedule[4]}]
             i += 7
-    print("fitting: ", len(schedules_for_fitting))
-    print("after: ", len(offspring.position)/7)
-    # print("schedules for fitting: ", len(schedules_for_fitting))
-    # Fit schedules that need fitting into available chargers
             
     # Calculate the total price of each price window
     total_prices = [
@@ -188,15 +208,11 @@ def crossover(p1, p2):
             time = schedule[4]-schedule[3]
             if window[0] <= entry_time:
                 offspring, found, chargers_busy = find_charger(offspring, schedule, entry_time, entry_time+time, chargers_busy, chargers, ampereLevels, busses)
-                if offspring == None:
-                    print("in window[0] <= entry_time", found)
-                if found == True:
+                if found:
                     break
             if window[0] > entry_time and exit_time <= window[1]:
                 offspring, found, chargers_busy = find_charger(offspring, schedule, exit_time-time, exit_time, chargers_busy, chargers, ampereLevels, busses)
-                if offspring == None:
-                    print("in window[0] > entry_time and exit_time <= window[1]", found)
-                if found == True:
+                if found:
                     break
         if not found:
             offspring, found, chargers_busy = find_charger(offspring, schedule, schedule[3], schedule[4], chargers_busy, chargers, ampereLevels, busses)
@@ -284,7 +300,7 @@ def _crossover2(p1, p2):
         # Check if the charger is already busy during the schedule
         if (schedule[0], schedule[1]) in chargers_busy:
             busy_slots = chargers_busy[(schedule[0], schedule[1])]
-            overlapping = any(sch['from']+random.randint(10,20) <= schedule[3] and sch['to'] >= schedule[4]+random.randint(10,20) for sch in busy_slots)
+            overlapping = any(sch['from']+random.randint(600000,1200000) <= schedule[3] and sch['to'] >= schedule[4]+random.randint(600000,1200000) for sch in busy_slots)
             if not overlapping:  # If no overlap, add to busy chargers
                 chargers_busy[(schedule[0], schedule[1])].append({'from': schedule[3], 'to': schedule[4]})
                 i += 7
@@ -319,7 +335,7 @@ def _crossover2(p1, p2):
                 start = busses[schedule[2]]['entryTime']
                 end = busses[schedule[2]]['entryTime']+time
                 for charger, busy_slots in chargers_busy.items():
-                    overlapping = any(sch['from']+random.randint(10,20) <= start and sch['to'] >= end+random.randint(10,20) for sch in busy_slots)
+                    overlapping = any(sch['from']+random.randint(600000,1200000) <= start and sch['to'] >= end+random.randint(600000,1200000) for sch in busy_slots)
                     if not overlapping and ampereLevels[ampereLevel]['avgAmpere'] <= chargers[charger]['ampere']:
                         chargers_busy[charger].append({'from': start, 'to': end})
                         chargers_busy[charger].sort(key=lambda x:x['from'])
