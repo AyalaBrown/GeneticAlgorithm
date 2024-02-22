@@ -129,6 +129,3 @@ def append_schedule(chargers_busy, start_time, end_time, ampere, bus, charger):
     chargers_busy[charger].append({'start_time':start_time , 'end_time': end_time})
     price = calculate_schedule_price(ampere, start_time, end_time, prices, chargers[charger]["voltage"])
     return {"chargerCode": charger[0], "connectorId": charger[1], "trackCode": bus, "startTime": start_time, "endTime":end_time, "ampere": ampere, "price": price}
-
-# pop = init_pop(10)
-# print(pop)

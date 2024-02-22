@@ -29,16 +29,15 @@ def read_data():
     busses = {}
     for i in b:
         busses[i["trackCode"]] = {"entryTime": i["entryTime"], "exitTime": i["exitTime"] , "socStart": i["socStart"], "socEnd": i["socEnd"]}
-    query = "exec isrProject_test.dbo.GetChargersList;"
+    query = "exec dbo.GetChargersList;"
+    chargers = pd.read_sql(query, cnxn).to_dict(orient='records')
     chrgs = {}
-    # chargers = pd.read_sql(query, cnxn).to_dict(orient='records')
-    # for i in range(0, len(chargers)):
-    #     if chargers[i]["voltage"] > 0:
-    #         chrgs.append({"chargerCode": chargers[i]["code"], "connectorId": 1, "voltage": chargers[i]["voltage"]})
-    #         chrgs.append({"chargerCode": chargers[i]["code"], "connectorId": 2, "voltage": chargers[i]["voltage"]})
-    for i in range(150):
-        chrgs[(i, 1)] = {"voltage": 650, "ampere": 112}
-        chrgs[(i, 2)] = {"voltage": 650, "ampere": 112}
+    for charger in chargers:
+        if charger['chargePointModel'] == 'DC 150kW':
+            chrgs[(charger['code'], 1)] = {"voltage": charger['voltage'], "ampere": charger['ampere']/2}
+            chrgs[(charger['code'], 2)] = {"voltage": charger['voltage'], "ampere": charger['ampere']/2}
+        else:
+            chrgs[(charger['code'], 1)] = {"voltage": charger['voltage'], "ampere": charger['ampere']}
     query = "exec dbo.GetElectricRate_PerDate '20240107';"
     prices = pd.read_sql(query, cnxn).to_dict(orient='records')
     query = "exec dbo.GetElectricRate_PerDate '20240108';"
@@ -52,7 +51,7 @@ def read_data():
     for i in range(0, len(c)):
         capacity[int(c.loc[i,"trackCode"])] = float(c.loc[i,"capacity"])
     data = {"busses": busses, "maxPower": 4000000, "chargers": chrgs, "prices": prices, "amperLevels": amperLevels, "capacity": capacity}
-    cursor.close()
+    cursor.close() 
     cnxn.close()
     return data
 
@@ -108,3 +107,7 @@ def getChargingTime(bus, ampereLevel, start, end):
         print(f"No resulte for bus {bus}")
         return 10
     return int(result[0]*60*1000)
+
+data = read_data()
+print(len(data['busses']))
+print(len(data['chargers']))

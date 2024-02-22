@@ -194,7 +194,7 @@ def crossover(p1, p2):
     # Find all tuples with the minimum price
     cheapest_prices = [price for price in total_prices if price[2] == min_price]
 
-    print("-------------------------------------")
+    # print("-------------------------------------")
 
     # Extract the time ranges associated with the cheapest prices
     cheapest_price_windows = [(price[0], price[1]) for price in cheapest_prices]
@@ -205,6 +205,7 @@ def crossover(p1, p2):
         exit_time = busses[schedule[2]]['exitTime']
         # Check if the bus entryTime and exitTime fall within any of the cheapest price windows
         for window in cheapest_price_windows:
+            print("window: ", window)
             time = schedule[4]-schedule[3]
             if window[0] <= entry_time:
                 offspring, found, chargers_busy = find_charger(offspring, schedule, entry_time, entry_time+time, chargers_busy, chargers, ampereLevels, busses)
@@ -220,7 +221,7 @@ def crossover(p1, p2):
             print("No charger found:(")
     if offspring == None:
         print("None", found)
-    print("after fitting: ", len(offspring.position)/7)
+    # print("after fitting: ", len(offspring.position)/7)
     return offspring
         
 def find_charger(offspring, schedule, start, end, chargers_busy, chargers, ampereLevels, busses):
@@ -241,9 +242,10 @@ def find_charger(offspring, schedule, start, end, chargers_busy, chargers, amper
         if ampereLevels[i]['low'] < schedule[5] < ampereLevels[i]['high']:
             ampereLevel = i
             break
-    ampereLevel+=1
-    while not found and ampereLevel<5:
-        time = initialPopulation.charging_time(ampereLevel+1,schedule[2])
+    ampereLevel-=1
+    while not found and ampereLevel>1:
+        time = initialPopulation.charging_time(ampereLevel-1,schedule[2])
+        print(f"in find charger, time: {time} ampere level: {ampereLevel}")
         if busses[schedule[2]]['exitTime'] - busses[schedule[2]]['entryTime'] >= time:
             start = busses[schedule[2]]['entryTime']
             end = busses[schedule[2]]['entryTime']+time
@@ -257,7 +259,7 @@ def find_charger(offspring, schedule, start, end, chargers_busy, chargers, amper
                     offspring.position += schedule
                     found = True
                     break  
-        ampereLevel+=1
+        ampereLevel-=1
     if not found:
         for charger in chargers:
             if charger not in chargers_busy:
